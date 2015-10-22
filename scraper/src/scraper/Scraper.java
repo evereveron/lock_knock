@@ -19,81 +19,126 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 public class Scraper {
-	
+
 	private static File file = new File("steam.xls");
 	private static ArrayList<Game> gameList = new ArrayList<Game>();
 	private static int pageNumber = 1;
 	private static int totalPageNumber = 1;
 
 	public static void main(String[] args) throws IOException, RowsExceededException, WriteException {
-		
+
 		if(!file.exists()) {
 			file.createNewFile();
 		}
-		
+
 		WritableWorkbook workbook;
 		workbook = Workbook.createWorkbook(file);
 		WritableSheet sheet = workbook.createSheet("Steam Store", 0);
-		
-		
+
+
 		//create reusable font formatter
 		WritableFont boldLabel = new WritableFont(WritableFont.TAHOMA, 12, WritableFont.BOLD);
 		WritableCellFormat boldFormat = new WritableCellFormat(boldLabel);
-		
+
 		//labels for store sheet
 		Label appIDLabel = new Label(0, 0, "App ID", boldFormat);
 		sheet.addCell(appIDLabel);
-		
+
 		Label nameLabel = new Label(1, 0, "Name", boldFormat);
 		sheet.addCell(nameLabel);
-		
+
 		Label dateLabel = new Label(2, 0, "Release Date", boldFormat);
 		sheet.addCell(dateLabel);
-		
+
 		Label discountLabel = new Label(3, 0, "Discount", boldFormat);
 		sheet.addCell(discountLabel);
-		
+
 		Label originalPriceLabel = new Label(4, 0, "Original Price", boldFormat);
 		sheet.addCell(originalPriceLabel);
-		
+
 		Label priceLabel = new Label(5, 0, "Price", boldFormat);
 		sheet.addCell(priceLabel);
-		
+
 		Label photoLabel = new Label(6, 0, "Photo Url", boldFormat);
 		sheet.addCell(photoLabel);
-		
+
 		Label gameUrlLabel = new Label(7, 0, "Game Url", boldFormat);
 		sheet.addCell(gameUrlLabel);
-		
+
 		Label ratingLabel = new Label(8, 0, "Rating", boldFormat);
 		sheet.addCell(ratingLabel);
-		
+
 		Label numReviewsLabel = new Label(9, 0, "Review Description", boldFormat);
 		sheet.addCell(numReviewsLabel);
-		
+
 		//first find number of pages
 		try {
 			Document doc2 = Jsoup.connect("http://store.steampowered.com/search").get();
 			Element search = doc2.select("div.search_pagination_right").first();
-			
+
 			Elements atags = search.getAllElements();
 			Element lastPageTag = atags.get(3);
-			
+
 			totalPageNumber = Integer.parseInt(lastPageTag.text());
 			System.out.println("total pages = " + totalPageNumber);
 			System.out.println("");
-			
+
 		} catch (Exception e) {
 			System.out.println("error getting page numbers");
 		}
-		
-		for(;pageNumber <= 1; pageNumber++) {
-			
-		
+
+		Document doc = Jsoup.connect("http://store.steampowered.com/search/").get();
+
+		for(;pageNumber <= 9; pageNumber++) {
+			Elements items;
+			Elements link;
+			String href = null;
+			Element one;
+			int i = 2;
+			int curr = 0;
+
 			try {
-				Document doc = Jsoup.connect("http://store.steampowered.com/search#page=" + 2).get();
+				//specifically for page 1
+				if(pageNumber == 1){
+					href = "http://store.steampowered.com/search/";
+					System.out.println(href);
+				}
+
+				//specifically for page 2
+				if(pageNumber == 2){
+					link = doc.select("div.search_pagination_right a");
+					one = link.get(0);
+					href = one.attr("href");
+					System.out.println(href);
+				}
+
+				if(pageNumber == 3){
+					link = doc.select("div.search_pagination_right a");
+					one = link.get(2);
+					href = one.attr("href");
+					System.out.println(href);
+				}
+
+				if(pageNumber == 4){
+					link = doc.select("div.search_pagination_right a");
+					one = link.get(3);
+					href = one.attr("href");
+					System.out.println(href);
+
+				}
+
+				if(pageNumber >= 5){
+					link = doc.select("div.search_pagination_right a");
+					one = link.get(4);
+					href = one.attr("href");
+					System.out.println(href);
+				}
+
+
+				doc = Jsoup.connect(href).get();
 				Elements results = doc.getElementsByClass("search_result_row");
-				
+
+
 				for(Element result : results) {
 					//grab elements
 					Element name = result.select("div.search_name").first();
@@ -102,7 +147,7 @@ public class Scraper {
 					Element discount = result.select("div.search_discount").first();				
 					Element photo = result.select("img[src~=(?i)\\.(png|jpe?g|gif)]").first();
 					Element rating = result.select("span.search_review_summary").first();
-						
+
 					//get text
 					String appid = result.attr("data-ds-appid");
 					String gameName = name.text();
@@ -112,11 +157,11 @@ public class Scraper {
 					String gamePhoto = photo.attr("src");
 					String url = result.attr("href");
 					String ratingText = "";
-					
+
 					if(rating != null) {
 						ratingText = rating.attr("data-store-tooltip");
 					}
-					
+
 					//format rating
 					String ratingInfo[] = ratingText.split("<br>");
 					String ratingSummary = ratingText;
@@ -125,7 +170,7 @@ public class Scraper {
 						ratingSummary = ratingInfo[0];
 						ratingDescription = ratingInfo[1];
 					}
-					
+
 					//format prices
 					String OPrice = "";
 					String APrice = gamePrice;
@@ -134,20 +179,20 @@ public class Scraper {
 						OPrice = prices[0];
 						APrice = prices[1];
 					}
-					
+
 					//create a new game and add to list
 					Game game = new Game(appid, gameName, gameDate, gameDiscount, OPrice, APrice, gamePhoto, url, ratingSummary, ratingDescription);
 					gameList.add(game);
-	
+
 					System.out.println(appid + ": " + gameName + " - " + gameDate + " - " + gamePrice + " (" + gameDiscount + ")");
 					System.out.println("photo url: " + gamePhoto);
 					System.out.println("rating summary: " + ratingSummary + ", rating description: " + ratingDescription);
 					System.out.println("");
-						
+
 				}
-				
-				
-				
+
+
+
 				/*
 				Elements images = doc.select("img[src~=(?i)\\.(png|jpe?g|gif)]");  
 	            for (Element image : images) {  
@@ -156,12 +201,12 @@ public class Scraper {
 	                System.out.println("width : " + image.attr("width"));  
 	                System.out.println("alt : " + image.attr("alt"));  
 	            } 
-	            */ 
-				
+				 */ 
+
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-		
+
 		}
 		System.out.println("now add to excel");
 		//i is declared up top so that we loop through the pages
@@ -169,7 +214,7 @@ public class Scraper {
 		for(int i=0; i < gameList.size(); i++) {
 			//go down the cells
 			Game cur = gameList.get(gameNum);
-			
+
 			for(int j=0; j < 10; j++) {
 				//go across the cells
 				switch(j) {
@@ -218,12 +263,12 @@ public class Scraper {
 					Label error = new Label(j, i+1, "error");
 					sheet.addCell(error);
 				}
-				
+
 
 			}
 			gameNum++;
 		}
-		
+
 		//close excel
 		workbook.write();
 		workbook.close();
